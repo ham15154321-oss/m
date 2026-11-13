@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="light dark">
 <script>try{var _m=document.cookie.match(/(?:^|; )pgtheme=(light|dark)/);if(_m)document.documentElement.setAttribute("data-theme",_m[1]);}catch(e){}</script>
 <meta name="robots" content="noindex">
-<meta name="pg1340-version" content="p5.0">
+<meta name="pg1340-version" content="p5.1">
 <title>13:40</title>
 <link rel="preconnect" href="https://script.google.com">
 <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
@@ -1549,6 +1549,15 @@
   #board .rg button.bkb small,#bzoom .rg button.bkb small{color:var(--label2)}
   #board .rg button.bkb.off,#bzoom .rg button.bkb.off{color:var(--label3)}
 
+  /* p5.1（11/13）約訪卡：還沒約（橘）／約了 1 位還差 1 位（灰）／幾位已約滿（小字） */
+  .yg{margin-top:4px} .yg + .yg{margin-top:8px;padding-top:6px;border-top:.5px dashed var(--sep)}
+  .yg h6{margin:0 0 2px;font-size:.8125rem;font-weight:700;color:var(--label)}
+  .yr{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:baseline;font-size:.875rem;line-height:1.65}
+  .yr em{font-style:normal;font-size:.75rem;font-weight:700;border-radius:6px;padding:1px 7px;white-space:nowrap}
+  .yr.z em{color:var(--orange);background:var(--orangeBg)} .yr.z span{color:var(--orange);font-weight:600}
+  .yr.h1 em{color:var(--label2);background:var(--fill)} .yr.h1 span{color:var(--label);font-weight:500}
+  .ys{margin:3px 0 0;font-size:.75rem;color:var(--label3)} .ys.ok{color:var(--red);font-size:.875rem;font-weight:600}
+
   /* ── 13:40 網頁外殼：載入中、更新提示、選區 ── */
   #pgWait{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--label2);font-size:.9375rem}
   #pgWait i{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--fill);border-top-color:var(--label2);animation:pgSpin .8s linear infinite}
@@ -1569,7 +1578,7 @@
 </style>
 </head>
 <body>
-<!-- 13:40 日會網頁｜p5.0｜版面原始檔：1340網頁版面/page_css.css、page_body.html（改版面改那兩個，再跑 build1340.py 重組）｜資料：Apps Script 業績數據橋接 ?r=&fmt=json -->
+<!-- 13:40 日會網頁｜p5.1｜版面原始檔：1340網頁版面/page_css.css、page_body.html（改版面改那兩個，再跑 build1340.py 重組）｜資料：Apps Script 業績數據橋接 ?r=&fmt=json -->
 <div id="pgWait"><i></i><span id="pgWaitT">載入中…</span></div>
 <div id="pgPick" hidden><h1>日會</h1><a data-r="中區">中區<small>台一・台二・台三｜13:40</small></a><a data-r="桃區">桃區<small>壢一・壢二・壢三｜13:30</small></a><a data-r="建國">高雄建國<small>建國｜13:40</small></a></div>
 <div id="appRoot" hidden>
@@ -2374,7 +2383,9 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
   /* p4.3（10/31 Denise 提）講座表單備註寫「無望」、或備註／波數寫「不處理」的不算約訪人頭（Apps Script v1.21 就扣掉了），這裡寫出扣了幾位 */
   function skipTxt(it){ var k = it.skip; if (!k || !(k.無望 || k.不處理 || k.取消)) return ''; return '已扣掉（不算約訪）：' + [k.取消 ? '取消 ' + k.取消 + ' 位' : '', k.無望 ? '備註無望 ' + k.無望 + ' 位' : '', k.不處理 ? '不處理 ' + k.不處理 + ' 位' : ''].filter(Boolean).join('、') + '。'; }   // p4.4 加取消
   window.__pgYueSkip = skipTxt;
-  function sum(it){ var P = people(it.orgs), cur = it.cur || {}; var none = P.filter(function(p){ return !(cur[p.全名] > 0); }); return { P: P, none: none, has: P.length - none.length }; }
+  function sum(it){ var P = people(it.orgs), cur = it.cur || {}; var none = P.filter(function(p){ return !(cur[p.全名] > 0); });
+    var nf = P.filter(function(p){ return (cur[p.全名] || 0) < QUOTA; });   // p5.1（11/13 Ivan）還沒約滿扣達的人（含一位都沒約的）
+    return { P: P, none: none, has: P.length - none.length, nf: nf, full: P.length - nf.length }; }
   function cell(m, p){ if (m === null) return '<td class="z">—</td>'; if (m === 'nil') return '<td class="z" title="那天還沒開始記">·</td>'; var v = (m || {})[p.全名] || 0; return '<td>' + v + '</td>'; }
   function table(it){
     if (!it.cur) return '<div class="yt"><h5>約訪表・' + esc(it.label) + '</h5><p class="z">這一班的名單還沒從 EIP 讀到，等下一次 🏫 班況同步。</p></div>';
@@ -2394,21 +2405,33 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
       .forEach(function(c){ out.push(itemOfUnit(c)); });
     return out; }
   var LAST = [];
-  function lineOf(it, many){ var S = sum(it); if (!it.cur) return [{ o: '', t: '名單還沒讀' }];
-    if (!many) return [{ o: '', t: S.none.length ? S.none.map(function(p){ return p.名; }).join('、') + '（' + it.orgs[0] + ' ' + S.has + '／' + S.P.length + ' 有約）' : '✔ 全員有約' }];
-    return it.orgs.map(function(o){ var P = S.P.filter(function(p){ return p.院 === o; }), N = S.none.filter(function(p){ return p.院 === o; }); if (!P.length) return null;
-      return { o: o, t: N.length ? N.map(function(p){ return p.名; }).join('、') + '（' + (P.length - N.length) + '／' + P.length + ' 有約）' : '✔ 全員有約' }; }).filter(Boolean); }
-  window.__pgYueTxt = function(){ var I = LAST.filter(function(it){ return it.cur; }).slice(0, 3); if (!I.length) return ''; var many = scopeOrgs().length > 1, out = ['📣 還沒約'];   // 名單還沒讀的不帶進群組文字
+  /* p5.1（11/13 Ivan：還沒達扣達 2 位，要更詳細）每一院分「還沒約」「約了 N 位、還差 M 位」兩種人，最後一句白話寫幾位已約滿 */
+  function grpOf(it, many){ var S = sum(it), cur = it.cur || {};
+    var os = many ? it.orgs : [null];
+    return os.map(function(o){ var P = o ? S.P.filter(function(p){ return p.院 === o; }) : S.P; if (!P.length) return null;
+      var by = {}; P.forEach(function(p){ var v = cur[p.全名] || 0; if (v < QUOTA) (by[v] = by[v] || []).push(p.名); });
+      var rows = Object.keys(by).map(Number).sort(function(a, b){ return a - b; }).map(function(v){ return { v: v, lab: v ? '約了 ' + v + ' 位、還差 ' + (QUOTA - v) + ' 位' : '還沒約', n: by[v] }; });
+      var full = P.filter(function(p){ return (cur[p.全名] || 0) >= QUOTA; }).length, ok = full === P.length;
+      function st(pre){ var who = (pre ? pre + ' ' : '') + P.length + ' 位業務'; return ok ? '✔ ' + who + '都約滿 ' + QUOTA + ' 位' : who + '：' + full + ' 位已約滿 ' + QUOTA + ' 位'; }
+      return { o: o || '', rows: rows, sumT: st(o ? '' : it.orgs.join('、')), ok: ok, n: P.length, full: full }; }).filter(Boolean); }   // 分院時院名寫在小標，這句不再重複
+  function lineOf(it, many){ if (!it.cur) return [{ o: '', t: '名單還沒讀' }];   // 群組文字用
+    return grpOf(it, many).map(function(g){ return { o: g.o, t: g.ok ? g.sumT : g.rows.map(function(r){ return r.lab + '：' + r.n.join('、'); }).join('；') + '（' + g.n + ' 位業務，' + g.full + ' 位已約滿）', lines: g }; }); }
+  window.__pgYueTxt = function(){ var I = LAST.filter(function(it){ return it.cur; }).slice(0, 3); if (!I.length) return ''; var many = scopeOrgs().length > 1, out = ['📣 還沒約滿 ' + QUOTA + ' 位'];   // 名單還沒讀的不帶進群組文字
     I.forEach(function(it){ var L = lineOf(it, many && it.orgs.length > 1);
-      if (L.length === 1 && !L[0].o) out.push(it.label + '：' + L[0].t); else { out.push(it.label); L.forEach(function(x){ out.push(x.o + '：' + x.t); }); } });
+      out.push(it.label);
+      if (L.length === 1 && !L[0].o) { var g = L[0].lines; if (!g) out.push(L[0].t); else { g.rows.forEach(function(r){ out.push(r.lab + '：' + r.n.join('、')); }); out.push(g.sumT); } }
+      else L.forEach(function(x){ out.push(x.o + '｜' + x.t); }); });
     var nOk = LAST.filter(function(it){ return it.cur; }).length; if (nOk > 3) out.push('還有 ' + (nOk - 3) + ' 場，看網頁');
     return out.join('\n'); };
   function render(){
     LAST = items(); if (!LAST.length) { box.hidden = true; return; }
     var many = scopeOrgs().length > 1;
-    box.innerHTML = '<div class="pl-h"><b>📣 還沒約</b><small>扣達 ' + QUOTA + ' 位' + (window.__pgLive && window.__pgLive.at ? '・' + esc(String(window.__pgLive.at).slice(5).replace('-', '/')) + ' 讀取' : '') + '・點場次看約訪表</small></div>' + LAST.map(function(it, i){ var L = lineOf(it, many && it.orgs.length > 1);
+    box.innerHTML = '<div class="pl-h"><b>📣 還沒約滿 ' + QUOTA + ' 位</b><small>扣達 ' + QUOTA + ' 位' + (window.__pgLive && window.__pgLive.at ? '・' + esc(String(window.__pgLive.at).slice(5).replace('-', '/')) + ' 讀取' : '') + '・點場次看約訪表</small></div>' + LAST.map(function(it, i){ var L = lineOf(it, many && it.orgs.length > 1);
       return '<div class="yi' + (i >= 3 ? ' more' : '') + '"><button type="button" class="yh" data-yk="' + i + '">' + (it.kind === '單元' ? '<span class="unit">單元</span>' : '<span class="lec">講座</span>') + esc(it.label) + ' ›</button>'
-        + L.map(function(x){ return '<div class="yl">' + (x.o ? '<i>' + esc(x.o) + '</i>' : '') + '<span class="' + (/^✔/.test(x.t) ? 'ok' : '') + '">' + esc(x.t) + '</span></div>'; }).join('') + '</div>'; }).join('')
+        + (it.cur ? grpOf(it, many && it.orgs.length > 1).map(function(g){ return '<div class="yg">' + (g.o ? '<h6>' + esc(g.o) + '</h6>' : '')
+            + g.rows.map(function(r){ return '<div class="yr' + (r.v ? ' h1' : ' z') + '"><em>' + esc(r.lab) + '</em><span>' + esc(r.n.join('、')) + '</span></div>'; }).join('')
+            + '<p class="ys' + (g.ok ? ' ok' : '') + '">' + esc(g.sumT) + '</p></div>'; }).join('')
+          : '<div class="yl"><span>名單還沒讀</span></div>') + '</div>'; }).join('')
       + (LAST.length > 3 ? '<p class="z">還有 ' + (LAST.length - 3) + ' 場，複製到群組時只帶前 3 場。</p>' : '');
     box.hidden = false;
   }
@@ -2700,8 +2723,8 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
     /* 約訪：最近一場還沒約幾位 */
     var Y = window.__pgYueStat ? window.__pgYueStat() : [], y0 = Y.filter(function(x){ return x.S; })[0];
     var yb = document.getElementById('yue'), yn = document.getElementById('yueNone'); if (yn && yb) yn.hidden = !yb.hidden;
-    setB('ib-yue', y0 ? (y0.S.none.length || '✓') : null, y0 && y0.S.none.length);
-    if (Y.length) tiles.push('<button type="button" class="gl gy" data-tabgo="s-yue"><span class="k">📣 約訪</span><b class="' + (y0 && y0.S.none.length ? 'og' : '') + '">' + (y0 ? y0.S.none.length : '—') + '</b><span class="u">' + (y0 ? '位還沒約' : '名單還沒讀') + '</span><span class="s">' + esc((y0 || Y[0]).it.label) + (Y.length > 1 ? '・共 ' + Y.length + ' 場' : '') + '</span></button>');
+    setB('ib-yue', y0 ? (y0.S.nf.length || '✓') : null, y0 && y0.S.nf.length);
+    if (Y.length) tiles.push('<button type="button" class="gl gy" data-tabgo="s-yue"><span class="k">📣 約訪</span><b class="' + (y0 && y0.S.nf.length ? 'og' : '') + '">' + (y0 ? y0.S.nf.length : '—') + '</b><span class="u">' + (y0 ? '位還沒約滿 2 位' : '名單還沒讀') + '</span><span class="s">' + esc((y0 || Y[0]).it.label) + (Y.length > 1 ? '・共 ' + Y.length + ' 場' : '') + '</span></button>');
     /* 補件 */
     var Pi = window.__pgPiliStat ? window.__pgPiliStat() : null, pb = document.getElementById('pili'), pn = document.getElementById('piliNone'); if (pn && pb) pn.hidden = !pb.hidden;
     setB('ib-pili', Pi && Pi.L.length ? Pi.L.length : null, Pi && Pi.L.length);
@@ -3017,11 +3040,12 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
       var hd = '<button type="button" class="yh" data-yk="' + x.i + '"><em class="' + (it.kind === '講座' ? 'lec' : 'unit') + '">' + (it.kind === '講座' ? '講座' : '單元') + '</em><b>' + esc(it.label) + '</b><i>' + (big ? '約訪表・📸' : '') + ' ›</i></button>';
       if (!S) return '<div class="ycol">' + hd + '<p class="none">名單還沒從 EIP 讀到，等下一次 🏫 班況同步</p></div>';
       var ok = S.P.filter(function(p){ return (it.cur[p.全名] || 0) >= YQ; }).length, tot = 0; S.P.forEach(function(p){ tot += it.cur[p.全名] || 0; });
-      var kpi = !big ? '<div class="ykpi sm"><b class="' + (S.none.length ? 'og' : 'rd') + '">' + (S.none.length ? S.none.length + ' 位還沒約' : '全員有約') + '</b><span>有約 ' + S.has + '／' + S.P.length + '・約了 ' + tot + ' 位學生</span></div>' : '<div class="ykpi">' + ring(S.P.length ? S.has / S.P.length : 0, '<b>' + S.has + '</b><small>／' + S.P.length + '</small>', S.none.length ? 'og' : 'rd')
-        + '<div><b class="' + (S.none.length ? 'og' : 'rd') + '">' + (S.none.length ? S.none.length + ' 位還沒約' : '全員有約') + '</b><span>約了 ' + tot + ' 位學生・' + ok + ' 位業務達扣達 ' + YQ + ' 位</span>' + (window.__pgYueSkip && window.__pgYueSkip(it) ? '<span class="sk">' + esc(window.__pgYueSkip(it)) + '</span>' : '') + '</div></div>';
+      var nfN = S.P.length - ok, kT = nfN ? nfN + ' 位還沒約滿 ' + YQ + ' 位' : '全員約滿 ' + YQ + ' 位', kS = (S.none.length ? '其中 ' + S.none.length + ' 位還沒約・' : '') + '約了 ' + tot + ' 位學生';   // p5.1
+      var kpi = !big ? '<div class="ykpi sm"><b class="' + (nfN ? 'og' : 'rd') + '">' + kT + '</b><span>' + kS + '</span></div>' : '<div class="ykpi">' + ring(S.P.length ? ok / S.P.length : 0, '<b>' + ok + '</b><small>／' + S.P.length + '</small>', nfN ? 'og' : 'rd')
+        + '<div><b class="' + (nfN ? 'og' : 'rd') + '">' + kT + '</b><span>' + S.P.length + ' 位業務 ' + ok + ' 位已約滿・' + kS + '</span>' + (window.__pgYueSkip && window.__pgYueSkip(it) ? '<span class="sk">' + esc(window.__pgYueSkip(it)) + '</span>' : '') + '</div></div>';
       var rows = it.orgs.filter(function(o){ return S.P.some(function(p){ return p.院 === o; }); }).map(function(o){
-        var P = S.P.filter(function(p){ return p.院 === o; }).sort(function(a, b){ return (it.cur[a.全名] || 0) - (it.cur[b.全名] || 0); }), n0 = P.filter(function(p){ return !(it.cur[p.全名] > 0); }).length;
-        return '<div class="yo"><div class="yol"><b class="' + ocC(o) + '">' + esc(o) + '</b>' + (big ? '<span class="' + (n0 ? 'og' : 'rd') + '">' + (n0 ? n0 + ' 位沒約' : '全員有約') + '</span>' : '') + '</div>'
+        var P = S.P.filter(function(p){ return p.院 === o; }).sort(function(a, b){ return (it.cur[a.全名] || 0) - (it.cur[b.全名] || 0); }), n0 = P.filter(function(p){ return (it.cur[p.全名] || 0) < YQ; }).length;   // p5.1 改算還沒約滿
+        return '<div class="yo"><div class="yol"><b class="' + ocC(o) + '">' + esc(o) + '</b>' + (big ? '<span class="' + (n0 ? 'og' : 'rd') + '">' + (n0 ? n0 + ' 位沒約滿' : '全員約滿') + '</span>' : '') + '</div>'
           + (big ? '<div class="ych">' + P.map(function(p){ var v = it.cur[p.全名] || 0; return '<span class="' + (v >= YQ ? 'ok' : v ? 'h1' : 'z') + '">' + esc(p.名) + '<i>' + v + '</i></span>'; }).join('') + '</div>'
                  : '<div class="ybar"><i style="width:' + ((P.length - n0) / P.length * 100).toFixed(1) + '%"></i></div><span class="yn">' + (P.length - n0) + '／' + P.length + '</span>') + '</div>'; }).join('');
       return '<div class="ycol">' + hd + kpi + '<div class="yos">' + rows + '</div></div>'; }).join('') + '</div>'
@@ -3070,7 +3094,7 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
     return '<div class="rb big"><div class="rcols" style="--k:' + R.by.length + '">' + cols + '</div><div class="rside">' + side + '</div></div>';
   }
   CARDS.push(
-    { id: 'yue', tabs: [0, 6], dot: '#FF2D55', nozoom: 1, t: function(){ return '約訪・還沒約'; }, s: function(){ return '講座、單元課・每位業務扣達 ' + YQ + ' 位'; }, body: function(){ return yueHtml(ST.tab === 6); } },
+    { id: 'yue', tabs: [0, 6], dot: '#FF2D55', nozoom: 1, t: function(){ return '約訪・還沒約滿 ' + YQ + ' 位'; }, s: function(){ return '講座、單元課・每位業務扣達 ' + YQ + ' 位'; }, body: function(){ return yueHtml(ST.tab === 6); } },
     { id: 'pili', tabs: [0, 7], dot: '#A2845E', nozoom: 1, t: function(){ return '霹靂無敵表單需補件'; }, s: function(){ return ST.tab === 7 ? '點名字看學生、要補什麼' : '內部用'; }, body: function(){ return piliHtml(ST.tab === 7); } },
     { id: 'ros', tabs: [0, 8], dot: '#0A84FF', nozoom: 1, t: function(){ return '出勤・今天上場戰士'; }, s: function(){ var R = window.__pgRosStat ? window.__pgRosStat() : null; return R ? R.mdw(R.d0) + '・' + window.__pgRosPhr(R.all).full + (ST.tab === 8 ? '・點名字看這週的班' : '') : ''; }, body: function(){ return rosHtml(ST.tab === 8); } },
     { id: 'chk', tabs: [4], dot: '#FF9500', nozoom: 1, t: function(){ return '驗收・上一次的交辦'; }, s: function(){ return '今天要收回來的'; },
@@ -3081,7 +3105,7 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
       draw: function(b){ var W = weekRank(FOCUS()); hbars(b, W ? W.list.slice(0, 12).map(function(x){ return { l: x.名, v: x.amt, me: true, tail: x.院, lc: ocHex(x.院), tailC: ocHex(x.院) }; }) : [], { fmt: wan, tail: 1 }); } }
   );
   function tabBadge(i){
-    if (i === 6) { var Y = window.__pgYueStat ? window.__pgYueStat().filter(function(x){ return x.S; })[0] : null; return Y && Y.S.none.length ? '<em class="w">' + Y.S.none.length + '</em>' : ''; }
+    if (i === 6) { var Y = window.__pgYueStat ? window.__pgYueStat().filter(function(x){ return x.S; })[0] : null; return Y && Y.S.nf.length ? '<em class="w">' + Y.S.nf.length + '</em>' : ''; }
     if (i === 7) { var X = window.__pgPiliStat ? window.__pgPiliStat() : null; return X && X.L.length ? '<em class="w">' + X.L.length + '</em>' : ''; }
     if (i === 8) { var R = window.__pgRosStat ? window.__pgRosStat() : null; return R ? '<em>' + R.all.up + ' 人</em>' : ''; }
     return ''; }
