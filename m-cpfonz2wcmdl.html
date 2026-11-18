@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="light dark">
 <script>try{var _m=document.cookie.match(/(?:^|; )pgtheme=(light|dark)/);if(_m)document.documentElement.setAttribute("data-theme",_m[1]);}catch(e){}</script>
 <meta name="robots" content="noindex">
-<meta name="pg1340-version" content="p5.1">
+<meta name="pg1340-version" content="p5.2">
 <title>13:40</title>
 <link rel="preconnect" href="https://script.google.com">
 <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
@@ -1578,7 +1578,7 @@
 </style>
 </head>
 <body>
-<!-- 13:40 日會網頁｜p5.1｜版面原始檔：1340網頁版面/page_css.css、page_body.html（改版面改那兩個，再跑 build1340.py 重組）｜資料：Apps Script 業績數據橋接 ?r=&fmt=json -->
+<!-- 13:40 日會網頁｜p5.2｜版面原始檔：1340網頁版面/page_css.css、page_body.html（改版面改那兩個，再跑 build1340.py 重組）｜資料：Apps Script 業績數據橋接 ?r=&fmt=json -->
 <div id="pgWait"><i></i><span id="pgWaitT">載入中…</span></div>
 <div id="pgPick" hidden><h1>日會</h1><a data-r="中區">中區<small>台一・台二・台三｜13:40</small></a><a data-r="桃區">桃區<small>壢一・壢二・壢三｜13:30</small></a><a data-r="建國">高雄建國<small>建國｜13:40</small></a></div>
 <div id="appRoot" hidden>
@@ -1785,7 +1785,7 @@ if (!secText('⚔️')){ document.getElementById('vh').style.display = 'none'; d
       + '<h5>被轉走 ' + m.out.length + ' 位</h5>' + tb(m.out, '原本 → 轉去', function(x){ return esc(mvSn(x.從人)) + ' → <b>' + esc(x.到院) + ' ' + esc(mvSn(x.到人)) + '</b>'; })
       + '<h5>轉進來 ' + m.inn.length + ' 位</h5>' + tb(m.inn, '從哪裡 → 現在', function(x){ return esc(x.從院) + ' ' + esc(mvSn(x.從人)) + ' → <b>' + esc(mvSn(x.到人)) + '</b>'; })
       + (m.chg.length ? '<h5>院內換承辦 ' + m.chg.length + ' 位</h5>' + tb(m.chg, '原本 → 現在', function(x){ return esc(mvSn(x.從人)) + ' → ' + esc(mvSn(x.到人)); }) : '')
-      + (m.gone.length ? '<h5>不見了 ' + m.gone.length + ' 位</h5>' + tb(m.gone, '原本業務', function(x){ return esc(mvSn(x.從人)); }) + '<p class="rp-z">不見＝前一天在已報到名單上、今天沒有了：可能被改回未報到，或重複登記被刪掉。</p>' : '')
+      + (m.gone.length ? '<h5>不見了 ' + m.gone.length + ' 位</h5>' + tb(m.gone, '原本業務', function(x){ return esc(mvSn(x.從人)); }) + '<p class="rp-z">不見＝前一天在已報到名單上、今天沒有了：可能被改回未報到，或重複登記被刪掉。預約日期還沒到的不比；之後又出現在名單上的會自動拿掉。</p>' : '')
       + '<p class="rp-z">從 ' + (md2(D.ckMove.from) || '開始記錄那天') + ' 的存檔開始比。預約日期被改、同一院還找得到的不算；原本的承辦離職、換給別人的也不算。</p>'); };
   window.__pgMvOpen = function(o){ if (window.__pgNav) return window.__pgNav('mv', o); };   // 11/05 apple-design：改進同一個面板，不再跳中間的小視窗
   var dfTxt = function(x){ var d = x.diff; if (d == null) return '';
