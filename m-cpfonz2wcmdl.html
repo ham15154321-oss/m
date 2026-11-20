@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="light dark">
 <script>try{var _m=document.cookie.match(/(?:^|; )pgtheme=(light|dark)/);if(_m)document.documentElement.setAttribute("data-theme",_m[1]);}catch(e){}</script>
 <meta name="robots" content="noindex">
-<meta name="pg1340-version" content="p5.3">
+<meta name="pg1340-version" content="p5.4">
 <title>13:40</title>
 <link rel="preconnect" href="https://script.google.com">
 <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
@@ -1591,6 +1591,20 @@
   #bzoom .tr-n{display:block;font-weight:600}
   #bzoom .tr-n small{color:var(--label2);font-weight:500;margin-left:.5em;font-size:.8em}
   #bzoom .tr-m{display:block;color:var(--label2);font-size:.88em;line-height:1.45;margin-top:.15em}
+  /* p5.4 合談、及格線、談過的學生、學員介紹點進去 */
+  small.he{display:inline-block;margin-left:.45em;font-size:.72rem;font-weight:600;color:var(--blue);background:var(--blueBg);border-radius:.45em;padding:.05em .45em;white-space:nowrap}
+  #board .lrow .t{position:relative}
+  #board .lrow .t b.nd{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--label);opacity:.55;border-radius:1px}
+  #board .lrow .v.og{color:var(--orange)}
+  #bzoom .nl-a small.gp{color:var(--orange);font-weight:600}
+  #bzoom .psub.pass{margin-top:.6em}
+  #bzoom .psub.pass.og b{color:var(--orange)}
+  #bzoom .fol{background:var(--fill);border-radius:14px;padding:.3em .9em}
+  #bzoom em.fg{font-style:normal;font-size:.72em;font-weight:700;margin-left:.5em;padding:.1em .45em;border-radius:.45em;background:var(--orangeBg);color:var(--orange);vertical-align:.1em}
+  #bzoom em.fg.g2,#bzoom em.fg.g3,#bzoom em.fg.g4{background:var(--redBg);color:var(--red)}
+  #bzoom h4.tr-h2{margin:1.2em 0 .2em;font-size:1.02em}
+  #bzoom button.refb{font:inherit;color:var(--blue);background:none;border:0;padding:0;cursor:pointer}
+  .rk-r .n small.ref[data-ref]{color:var(--blue);cursor:pointer}
 
   /* ── 13:40 網頁外殼：載入中、更新提示、選區 ── */
   #pgWait{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--label2);font-size:.9375rem}
@@ -1612,7 +1626,7 @@
 </style>
 </head>
 <body>
-<!-- 13:40 日會網頁｜p5.3｜版面原始檔：1340網頁版面/page_css.css、page_body.html（改版面改那兩個，再跑 build1340.py 重組）｜資料：Apps Script 業績數據橋接 ?r=&fmt=json -->
+<!-- 13:40 日會網頁｜p5.4｜版面原始檔：1340網頁版面/page_css.css、page_body.html（改版面改那兩個，再跑 build1340.py 重組）｜資料：Apps Script 業績數據橋接 ?r=&fmt=json -->
 <div id="pgWait"><i></i><span id="pgWaitT">載入中…</span></div>
 <div id="pgPick" hidden><h1>日會</h1><a data-r="中區">中區<small>台一・台二・台三｜13:40</small></a><a data-r="桃區">桃區<small>壢一・壢二・壢三｜13:30</small></a><a data-r="建國">高雄建國<small>建國｜13:40</small></a></div>
 <div id="appRoot" hidden>
@@ -1706,6 +1720,19 @@ function trialRows(orgs){ var out = []; ((D.asst && D.asst.fun) || []).forEach(f
 /* p5.3（11/19 日會：有些是別的部門加購的，不是本院的問題）註冊未消耗：承辦人不是本院業務名單上的（離職的不算）→ 搬到 uncX，另外列「別的部門加購」，不算進本院 */
 (function(){ var A = D.asst, P = (D.ppl && D.ppl.人) || []; if (!A || !A.unc || !P.length) return; var own = {}; P.forEach(function(p){ own[p.院 + '|' + p.全名] = 1; });
   A.uncX = A.unc.filter(function(x){ return !x.離職 && x.承辦 && !own[x.院 + '|' + x.承辦]; }); if (A.uncX.length) A.unc = A.unc.filter(function(x){ return A.uncX.indexOf(x) < 0; }); })();
+/* p5.4（11/20 雅晴日會：分業績的人都要一起處理，不要讓一個人扛）註冊未消耗：同一位學生、同一科在兩院都出現＝合談，兩邊都標對方 */
+(function(){ var A = D.asst; if (!A || !A.unc) return; var g = {}; [].concat(A.unc, A.uncX || []).forEach(function(x){ var k = x.學生 + '|' + x.課程; (g[k] || (g[k] = [])).push(x); });
+  Object.keys(g).forEach(function(k){ var L = g[k]; if (L.length < 2) return; L.forEach(function(x){ x.合 = L.filter(function(y){ return y !== x; }).map(function(y){ return { 院: y.院, 承辦: y.承辦 }; }); }); }); })();
+function heTag(x){ return x.合 && x.合.length ? '<small class="he">合談・' + x.合.map(function(y){ return esc(short(y.承辦)) + (y.院 !== x.院 ? '（' + esc(y.院) + '）' : ''); }).join('、') + '</small>' : ''; }
+/* p5.4（11/20 雅晴：20 號報到不到 8 位就是不及格）及格線：設定分頁「報到及格線」（全部）、「報到及格線・台三」（單一院）；沒填＝8。照日期換算：到今天該有 round(及格線 × 幾號 ÷ 20)，6 號前不算 */
+function ckPass(o){ var c = (window.__pgLive && window.__pgLive.cfg) || {}; return (c.ckPassBy && +c.ckPassBy[o]) || +c.ckPass || 8; }
+function ckNeed(o, day){ return day >= 6 ? Math.round(ckPass(o) * day / 20) : null; }
+/* p5.4（11/20 雅晴：聽完單元課說下個月再來 → 第一次沒成交就約第二次，也可以換人）報名了、還沒註冊，備註寫了試聽／單元／體驗，而且備註裡最晚的日期已經過了 */
+function trialPastRows(orgs){ var n = new Date(), cm = n.getMonth() + 1, t = cm * 100 + n.getDate(), out = [];
+  ((D.asst && D.asst.fun) || []).forEach(function(b){ if (b.主管 || orgs.indexOf(b.院) < 0) return; (b.名單 || []).forEach(function(x){ var m = String(x.m || ''); if (x.關 !== '報名沒註冊' || !/試聽|單元|體驗/.test(m) || /不需要|不想|沒興趣|不用來/.test(m)) return;
+    var mx = null, re = /(\d{1,2})\/(\d{1,2})/g, q, mm = m.replace(/20\d\d\//g, ''); while ((q = re.exec(mm))){ var mo = +q[1], dd = +q[2]; if (mo < 1 || mo > 12 || dd < 1 || dd > 31) continue; var v = (mo > cm + 1 ? -10000 : 0) + mo * 100 + dd; if (mx == null || v > mx) mx = v; }
+    if (mx == null || mx >= t) return; out.push({ 院: b.院, 業務: b.業務, 生: x.n, d: x.d, s: x.s, m: m }); }); });
+  return out; }
 /* p5.3（11/19 日會：壢二 65 個報到裡藏了學員介紹，雙十一要學）這個月報到明細裡，通路是「學員介紹」的有幾位（預約在以後的不算） */
 function refN(o){ var C = D.ck && D.ck.列; if (!C) return null; var n = new Date(), ym = (D.asst && D.asst.月) ? String(D.asst.月).slice(0, 7) : n.getFullYear() + '/' + String(n.getMonth() + 1).padStart(2, '0'), td = n.getFullYear() + '/' + String(n.getMonth() + 1).padStart(2, '0') + '/' + String(n.getDate()).padStart(2, '0'), c = 0;
   var O = [].concat(o); C.forEach(function(r){ if (O.indexOf(r[0]) >= 0 && String(r[3]).slice(0, 7) === ym && String(r[3]).slice(0, 10) <= td && r[5] === '學員介紹') c++; }); return c; }
@@ -1846,12 +1873,13 @@ if (!secText('⚔️')){ document.getElementById('vh').style.display = 'none'; d
   var h = '<div class="rk-h">' + (cur ? (+cur.split('/')[0]) + ' 月報到<small>（到 ' + cur + '）</small>' : '這個月報到') + '</div>';
   var MY = D.orgs || (D.r === '建國' ? ['建國'] : ['台一', '台二', '台三']), canGo = false;   // p4.8（11/04 Ivan）點一家 → 主管・報到排名 → 點名字看報到的學生
   h += R.map(function(x, i){ var d = x.diff, go = MY.indexOf(x.院) >= 0; if (go) canGo = true;
-    return '<div class="rk-r' + (go ? ' go' : '') + '"' + (go ? ' role="button" tabindex="0" data-lead="' + esc(x.院) + '" aria-label="看' + esc(x.院) + '每位業務的報到"' : '') + '><span class="o">' + esc(x.院) + '</span><span class="n"><b class="' + (i === 0 && R.length > 1 ? 'top' : '') + '">' + x.n + '</b> 人' + (refN(x.院) != null ? '<small class="ref">其中學員介紹 ' + refN(x.院) + ' 位</small>' : '') + '</span>'
+    return '<div class="rk-r' + (go ? ' go' : '') + '"' + (go ? ' role="button" tabindex="0" data-lead="' + esc(x.院) + '" aria-label="看' + esc(x.院) + '每位業務的報到"' : '') + '><span class="o">' + esc(x.院) + '</span><span class="n"><b class="' + (i === 0 && R.length > 1 ? 'top' : '') + '">' + x.n + '</b> 人' + (refN(x.院) != null ? (refN(x.院) ? '<small class="ref" role="button" tabindex="0" data-ref="' + esc(x.院) + '">其中學員介紹 ' + refN(x.院) + ' 位 ›</small>' : '<small class="ref">其中學員介紹 0 位</small>') : '') + '</span>'
       + '<span class="df">' + dfTxt(x) + '</span>'
       + '<span class="rk">全省第 ' + x.rank + '</span><span class="cv">' + (go ? '›' : '') + '</span></div>' + mvLine(x.院); }).join('');
   if (canGo) h += '<p class="rk-f">' + (W3 ? '近 3 天＝' + W3.from + '～' + W3.to + ' 報到幾位（照 EIP 報到明細的日期算）' + (W3.prev ? '，小字是再往前 3 天' : '') + '。' : '') + (!W3 && cur && prev ? cur + ' 那天報到幾位（跟 ' + prev + ' 的資料比）。「不是 ' + cur + ' 的」＝前幾天的報到後來才補登進 EIP，或預約日期排在以後、先標了已報到。' : '') + '點一家看每位業務的報到，再點名字看報到的學生</p>';
   el.className = 'rk card flat'; el.innerHTML = h;
-  var goLead = function(e){ var r = e.target.closest && e.target.closest('[data-lead]'); if (!r) return; if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault(); if (window.__pgB && window.__pgB.lead) window.__pgB.lead(r.dataset.lead); };
+  var goLead = function(e){ var rf = e.target.closest && e.target.closest('[data-ref]'); if (rf){ if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault(); e.stopPropagation(); if (window.__pgNav) window.__pgNav('ref', [rf.dataset.ref]); return; }   // p5.4 學員介紹點進去
+    var r = e.target.closest && e.target.closest('[data-lead]'); if (!r) return; if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault(); if (window.__pgB && window.__pgB.lead) window.__pgB.lead(r.dataset.lead); };
   el.onclick = function(e){ var mv = e.target.closest && e.target.closest('[data-mv]'); if (mv){ e.preventDefault(); if (window.__pgMvOpen) window.__pgMvOpen(mv.dataset.mv); return; } goLead(e); }; el.onkeydown = goLead;
   var top3 = (note.match(/全省前三：(.*?)。/) || [])[1] || '';
   nt.innerHTML = top3 ? '全省前三：' + top3 : '';
@@ -1878,7 +1906,7 @@ if (!secText('⚔️')){ document.getElementById('vh').style.display = 'none'; d
   stat.forEach(function(s){
     h += '<div class="ai' + (orgs.length === 1 ? ' open' : '') + '"><button class="ar u" type="button" aria-expanded="' + (orgs.length === 1) + '"><span class="nm">' + s.o + (!hasD(s.o) ? noD : (s.o === worstU && s.n ? '<i class="tag worst">最差</i>' : (s.o === bestU && s.o !== worstU ? '<i class="tag best">最好</i>' : ''))) + '</span>'
       + '<span class="v' + (s.o === worstU && s.n ? ' gap' : (s.n ? '' : ' z')) + '">' + s.n + '</span><span class="v d' + (s.o === worstU && s.n ? ' gap' : '') + '">' + (s.n ? s.max + '<small>天</small>' : '—') + '</span><span class="v ' + (s.done ? 'ok' : 'z') + '">' + (s.done == null ? '—' : s.done) + '</span><span class="dc">›</span></button>'
-      + '<div class="ab"><div><div class="unc">' + (s.u.length ? s.u.map(function(x){ return '<div class="ur"><div class="l"><div class="st">' + esc(short(x.承辦)) + (x.離職 ? '<small class="left">已離職</small>' : '') + '<span class="sn">' + esc(x.學生) + '</span></div><div class="cr">' + esc(x.課程) + (x.加購 ? '（學員加購）' : '') + '</div></div><div class="dy"><b>' + x.天 + '<small>天</small></b>註冊後還沒登記</div></div>'; }).join('') : '<p class="none">沒有，都登記了。</p>') + uncXHtml(s.o) + '</div></div></div></div>';
+      + '<div class="ab"><div><div class="unc">' + (s.u.length ? s.u.map(function(x){ return '<div class="ur"><div class="l"><div class="st">' + esc(short(x.承辦)) + (x.離職 ? '<small class="left">已離職</small>' : '') + '<span class="sn">' + esc(x.學生) + '</span></div><div class="cr">' + esc(x.課程) + (x.加購 ? '（學員加購）' : '') + heTag(x) + '</div></div><div class="dy"><b>' + x.天 + '<small>天</small></b>註冊後還沒登記</div></div>'; }).join('') : '<p class="none">沒有，都登記了。</p>') + uncXHtml(s.o) + '</div></div></div></div>';
   });
   h += '<div class="cf">' + (A.base ? '本週處理掉跟 ' + A.base + ' 存檔比' : '「本週處理」要等週五存檔後才有') + '</div></div>';
   // 走到哪一關
@@ -1891,7 +1919,7 @@ if (!secText('⚔️')){ document.getElementById('vh').style.display = 'none'; d
   var worstF = fsD.length > 1 ? fsD.slice().sort(function(a, b){ return b.rate - a.rate; })[0].o : '', bestF = fsD.length > 1 ? fsD.slice().sort(function(a, b){ return a.rate - b.rate; })[0].o : '';
   var v = function(x, cls){ return '<span class="v' + (cls || (+x ? '' : ' z')) + '">' + x + '</span>'; };
   h += '<div class="card flat acc" id="accF" style="margin-top:8px"><div class="ch">' + (mo ? '<i class="mo">' + mo + '</i>' : '') + '<b>談過的人，走到哪一關</b><span>每一關少幾個，就是掛在那一關的人・點一家看業務</span></div>' + staleTxt
-    + (function(){ var n = trialRows(orgs).length; return n ? '<button type="button" class="trp" data-trialp="' + esc(orgs.length === 1 ? orgs[0] : '') + '"><b>排了試聽、沒收報名費 ' + n + ' 位</b><span>學生要來了，100 元報名費還沒收・點開看是誰</span><i>›</i></button>' : ''; })()   // p5.3
+    + (function(){ var n = trialRows(orgs).length, n2 = trialPastRows(orgs).length; return (n || n2) ? '<button type="button" class="trp" data-trialp="' + esc(orgs.length === 1 ? orgs[0] : '') + '"><b>' + [n ? '排了試聽、沒收報名費 ' + n + ' 位' : '', n2 ? '來過試聽、還沒註冊 ' + n2 + ' 位' : ''].filter(Boolean).join('・') + '</b><span>' + (n ? '學生要來了，100 元報名費還沒收' : '') + (n && n2 ? '；' : '') + (n2 ? '試聽日期過了，再約第二次' : '') + '・點開看是誰</span><i>›</i></button>' : ''; })()   // p5.3
     + '<div class="fr hd"><span style="text-align:left">學院</span><span>談過</span><span>報名</span><span>註冊</span><span>排進班</span><span>上過課</span><span></span></div>';
   fs.forEach(function(s){
     var gapCls = s.排進班 < s.註冊 ? (s.o === worstF ? ' gap' : '') : '';
@@ -3065,15 +3093,15 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
         /* 10/27 Ivan：不秀「共差 N 位」，整棟加總太大會想放棄，差幾位各班自己看 */
         return '<div class="kpi"><b class="' + (need.length ? 'og' : '') + '">' + L.length + '<small>班</small></b><span>' + (need.length ? need.length + ' 班還差人・' + (L.length - need.length) + ' 班過門檻' : (L.length ? '都過門檻了' : '')) + '</span></div><svg class="ch"></svg>'; },
       draw: function(b){ bullets(b, openList()); } },
-    { id: 'lead', seg: 3, dot: '#5856D6', t: function(){ return '主管・' + (ST.lsort === 'd' ? '幾天沒報到' : '報到排名'); }, s: function(){ return (ST.org || REGION) + '・橘色＝3 天以上沒有新增報到・點名字看明細'; },
+    { id: 'lead', seg: 3, dot: '#5856D6', t: function(){ return '主管・' + (ST.lsort === 'd' ? '幾天沒報到' : '報到排名'); }, s: function(){ return (ST.org || REGION) + '・橘色＝3 天以上沒有新增報到' + passTxt() + '・點名字看明細'; },
       body: function(){ var L = leadRank();
         if (!L){ var P = leadPeople(); if (P.length) return '<svg class="ch"></svg>'; var t = (typeof secText === 'function' ? secText('🧑') : ''); if (!t) return '<p class="none">' + esc(D.agNone || '今天議程沒有這一段') + '</p>';
           return '<div class="lt">' + t.split('\n').slice(1).filter(function(l){ return l.trim(); }).slice(0, 6).map(function(l){ return '<p>' + fmtLine(l.replace(/^\s*\d+[.、]\s*/, '')) + '</p>'; }).join('') + '</div>'; }
         if (!L.length) return '<p class="none">這一院沒有業務資料</p>';
-        var mx = Math.max.apply(null, L.map(function(x){ return x.v; })) || 1;
+        var mx = Math.max.apply(null, L.map(function(x){ return Math.max(x.v, x.need || 0); })) || 1;
         var RA = window.__pgRosApi, anyT = false, TG = {}; L.forEach(function(x){ var g = RA && RA.tag(x.k); if (g) { TG[x.k] = g; anyT = true; } });   // p3.0（10/29 Ivan）今天休假、開會不在的人標出來
         return '<div class="lrk' + (anyT ? ' wt' : '') + '">' + L.map(function(x){ var hot = x.none || (x.d != null && x.d >= 3), g = TG[x.k];
-          return '<button type="button" class="lrow' + (hot ? ' hot' : '') + (g && g.off ? ' roff' : '') + '" data-p="' + esc(x.k) + '"><span class="n ' + ocC(x.院) + '">' + esc(x.名) + (ST.org || ORGS.length < 2 ? '' : '<small>' + esc(x.院) + '</small>') + (g ? '<em class="rtag">' + esc(g.t) + '</em>' : '') + (window.__pgPiliN && window.__pgPiliN(x.k) ? '<em class="ptag">補件 ' + window.__pgPiliN(x.k) + '</em>' : '') + '</span><span class="t"><i style="width:' + Math.max(2, x.v / mx * 100) + '%"></i></span><span class="v">' + x.v + '</span><span class="d' + (x.miss ? ' miss' : '') + '">' + esc(dayTxt(x)) + '</span></button>'; }).join('') + '<div class="lmore" hidden></div></div>'; },
+          return '<button type="button" class="lrow' + (hot ? ' hot' : '') + (g && g.off ? ' roff' : '') + '" data-p="' + esc(x.k) + '"><span class="n ' + ocC(x.院) + '">' + esc(x.名) + (ST.org || ORGS.length < 2 ? '' : '<small>' + esc(x.院) + '</small>') + (g ? '<em class="rtag">' + esc(g.t) + '</em>' : '') + (window.__pgPiliN && window.__pgPiliN(x.k) ? '<em class="ptag">補件 ' + window.__pgPiliN(x.k) + '</em>' : '') + '</span><span class="t"><i style="width:' + Math.max(2, x.v / mx * 100) + '%"></i>' + (x.need ? '<b class="nd" style="left:' + (x.need / mx * 100) + '%"></b>' : '') + '</span><span class="v' + (x.gap ? ' og' : '') + '">' + x.v + '</span><span class="d' + (x.miss ? ' miss' : '') + '">' + esc(dayTxt(x)) + '</span></button>'; }).join('') + '<div class="lmore" hidden></div></div>'; },
       draw: function(b){ if (!leadRank()){ var P = leadPeople(); if (P.length) streaks(b, P); return; } fitRows(b); } },
     { id: 'fun', seg: 1, dot: C.asst, t: function(){ return '走到哪一關'; }, s: function(){ return (A && A.月 ? (+String(A.月).split('/')[1]) + ' 月談過的人' : ''); },
       body: '<svg class="ch"></svg><div class="leg"><span><i style="background:rgba(175,82,222,.22)"></i>談過</span><span><i style="background:rgba(175,82,222,.6)"></i>註冊</span><span><i style="background:' + C.asst + '"></i>排進班</span></div>', draw: function(b){ funnel(b, funRows()); } },
@@ -3189,7 +3217,8 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
         else if (+p.報到 > 0) miss = true; else { none = true; d = TODAY.getDate(); } }   // p2.4：有報到數、明細裡找不到 ≠ 本月沒有
       else if (ag[p.名] != null) d = ag[p.名];
       var off = (has && d != null) ? offDays(k, l || (mon + '00'), ymd(l ? CT : TODAY)) : 0; if (off) d = Math.max(0, d - off);   // p5.3 休假那幾天不算進「幾天沒有新增」
-      return { k: k, 名: p.名, 院: p.院, 全名: p.全名, v: +p.報到 || 0, 面談: +p.面談 || 0, 註冊: +p.註冊 || 0, d: d, last: l || '', none: none, miss: miss, off: off, td: offToday(k) };
+      var need = ckNeed(p.院, TODAY.getDate()), v0 = +p.報到 || 0;   // p5.4 及格線
+      return { k: k, 名: p.名, 院: p.院, 全名: p.全名, v: v0, 面談: +p.面談 || 0, 註冊: +p.註冊 || 0, d: d, last: l || '', none: none, miss: miss, off: off, td: offToday(k), need: need, gap: need != null && v0 < need ? need - v0 : 0 };
     }).sort(ST.lsort === 'd' ? function(a, b){ return ((b.d == null ? -1 : b.d) - (a.d == null ? -1 : a.d)) || (b.v - a.v); } : function(a, b){ return (b.v - a.v) || ((b.d || 0) - (a.d || 0)); });   // p2.6：可以照「幾天沒報到」排
   }
   var TDS = (function(){ var lv; try { lv = !new URLSearchParams(location.search).get('d'); } catch(e){ lv = !D.date; } return ymd(lv ? new Date() : TODAY); })();   // 11/05：真正的今天（看最新時）
@@ -3205,6 +3234,13 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
     more.textContent = '還有 ' + hide + ' 位，點 ⤢ 看全部'; }
   /* 點一個人：右邊滑出他的報到明細 */
   var CK_WAIT = '這個月的報到明細（誰、哪天、哪個通路）還沒進來。擴充更新到 5.87 以上，按一次 🏫 班況就會自己補抓（照慢速，一次一頁），不用另外按 🚪 報到。';   // p4.8（11/04）舊字寫「5.73」，被當成擴充版本
+  /* p5.4（11/20 雅晴點宣成「面談 4」，當場問這四個人是誰）個人明細多一段：這個月談過的學生，走到哪一關＋面談備註 */
+  var GO4 = { '談過沒報名': 0, '報名沒註冊': 1, '註冊沒排班': 2, '已排班': 3, '上過課': 4 }, GLB = { '談過沒報名': '面談了、還沒報名', '報名沒註冊': '報名了、還沒註冊', '註冊沒排班': '註冊了、還沒排班', '已排班': '已排班', '上過課': '上過課' };
+  function funOfHtml(x){ var b = ((A && A.fun) || []).filter(function(f){ return f.院 === x.院 && f.業務 === x.全名; })[0];
+    if (!b || !b.名單) return ''; var L = b.名單.slice().sort(function(a, c){ return ((GO4[a.關] != null ? GO4[a.關] : 9) - (GO4[c.關] != null ? GO4[c.關] : 9)) || String(c.d).localeCompare(String(a.d)); });
+    var cnt = {}; L.forEach(function(s){ cnt[s.關] = (cnt[s.關] || 0) + 1; });
+    return '<h5>這個月談過的學生<small>' + L.length + ' 位' + Object.keys(GO4).filter(function(g){ return cnt[g]; }).map(function(g){ return '・' + GLB[g] + ' ' + cnt[g]; }).join('') + '</small></h5>'
+      + (L.length ? '<div class="fol">' + L.map(function(s){ return '<div class="tr-r"><span class="tr-n">' + esc(s.n) + '<em class="fg g' + (GO4[s.關] != null ? GO4[s.關] : '') + '">' + esc(GLB[s.關] || s.關 || '') + '</em><small>面談 ' + esc(md(s.d)) + (s.s ? '・' + esc(clip(chName(s.s), 12)) : '') + '</small></span><span class="tr-m">' + esc(s.m || '（面談紀錄沒有備註）') + '</span></div>'; }).join('') + '</div>' : '<p class="z">這個月還沒有面談紀錄。</p>'); }
   function personHtml(k){
     var L = leadRank() || [], x = L.filter(function(p){ return p.k === k; })[0]; if (!x) return '';
     var rows = ((D.ck && D.ck.列) || []).filter(function(r){ return r[0] + '|' + r[1] === k; }).sort(function(a, b){ return a[3] < b[3] ? 1 : -1; });
@@ -3214,11 +3250,13 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
     var wk = (window.__pgRosApi ? window.__pgRosApi.weekHtml(k) : '') + (window.__pgPiliHtml ? window.__pgPiliHtml(k) : '');   // p3.0 這週班表；p3.4 需補件
     var h = '<div class="ph"><h2>' + esc(x.名) + '</h2><span>' + esc(x.院) + '・' + (+mon.slice(5, 7)) + ' 月</span></div>' + wk
       + '<p class="psub">' + (x.td ? '<b class="tdoff">今天休</b>' : '') + (x.last ? '最後一次新增報到 ' + mdk(x.last) + '・' + (x.d ? '上班日已經 <b class="' + (x.d >= 3 ? 'og' : '') + '">' + x.d + ' 天</b>沒有新增' : '上班日都有新增') + (x.off ? '（中間休 ' + x.off + ' 天，不算）' : '') : (x.none ? '這個月還沒有報到' : (x.miss ? '這個月報到 ' + x.v + ' 位，但報到明細還沒抓到他的紀錄（下一次按 🏫 班況會補抓）' : ''))) + '</p>'
-      + '<div class="pk"><div><b>' + x.v + '</b><span>' + (+mon.slice(5, 7)) + ' 月報到</span></div><div><b>' + x.面談 + '</b><span>面談</span></div><div><b>' + x.註冊 + '</b><span>註冊</span></div><div><b class="' + ((x.none || x.d >= 3) ? 'og' : '') + '">' + esc(dayTxt(x)) + '</b><span>沒有新增報到</span></div></div>';
-    if (!D.ck){ return h + '<p class="z">' + CK_WAIT + '</p>'; }
+      + '<div class="pk"><div><b>' + x.v + '</b><span>' + (+mon.slice(5, 7)) + ' 月報到</span></div><div><b>' + x.面談 + '</b><span>面談</span></div><div><b>' + x.註冊 + '</b><span>註冊</span></div><div><b class="' + ((x.none || x.d >= 3) ? 'og' : '') + '">' + esc(dayTxt(x)) + '</b><span>沒有新增報到</span></div></div>'
+      + (x.need != null ? '<p class="psub pass' + (x.gap ? ' og' : '') + '">及格線：' + TODAY.getDate() + ' 號該有 ' + x.need + ' 位（20 號 ' + ckPass(x.院) + ' 位）' + (x.gap ? '，<b>還差 ' + x.gap + ' 位</b>' : '，已經及格') + '</p>' : '');
+    if (!D.ck){ return h + funOfHtml(x) + '<p class="z">' + CK_WAIT + '</p>'; }
     h += '<h5>' + (+mon.slice(5, 7)) + ' 月每天的報到<small>深色＝有人報到・橘框＝還沒有新增的日子</small></h5><div class="pcal">' + cal + '</div>'
       + '<h5>已報到的學生<small>' + rows.filter(function(r){ return !fut(r[3]); }).length + ' 位' + (rows.some(function(r){ return fut(r[3]); }) ? '・另有 ' + rows.filter(function(r){ return fut(r[3]); }).length + ' 位預約在以後' : '') + '</small></h5>' + (rows.length ? '<table class="stab"><tr><th class="l">預約日</th><th class="l">學生</th><th class="l">通路</th><th class="l">後來</th></tr>' + rows.map(function(r){ var dd = dOf(r[3]);
         return '<tr><td class="l">' + mdk(r[3]) + (dd ? '（' + WK[dd.getDay()] + '）' : '') + (r[4] ? ' ' + esc(r[4]) : '') + '</td><td class="l">' + esc(r[2]) + '</td><td class="l">' + esc(r[5] || '—') + '</td><td class="l' + (/註冊/.test(r[6]) ? ' rd' : '') + '">' + esc(r[6] || '') + '</td></tr>'; }).join('') + '</table>' : '<p class="z">這個月還沒有報到。</p>')
+      + funOfHtml(x)
       + '<h5>同院比較</h5><table><tr><th class="l">業務</th><th>報到</th><th>最後一次報到</th><th>幾天沒有新增</th></tr>' + same.map(function(p){ return '<tr class="' + (p.k === k ? 'me' : '') + ' clk" data-p="' + esc(p.k) + '"><td class="l nm">' + esc(p.名) + '</td><td>' + p.v + '</td><td>' + (p.last ? mdk(p.last) : '—') + '</td><td class="' + ((p.none || p.d >= 3) ? 'og' : '') + '">' + esc(dayTxt(p)) + '</td></tr>'; }).join('') + '</table>'
       + (D.ck.完整 ? '' : '<p class="z" style="margin-top:1em">這個月的報到明細還沒抓完整（下一次按 🏫 班況會把整個月補齊）。</p>');
     return h;
@@ -3242,12 +3280,15 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
   /* ══ 11/05 apple-design 審查：手機版不再切到會議模式。一個面板、往下點（內容從右邊推進來）、左上「‹ 返回」回上一頁、✕／往下拉整個關掉回原位
      會議模式：從「主管・報到排名」放大點進去的，返回會回到那張放大 ══ */
   var NAV = [];
+  /* p5.4 及格線說明：20 號 N 位，換算到今天 M 位 */
+  function passTxt(){ var F = FOCUS(), day = TODAY.getDate(); if (day < 6 || !F.length) return ''; var ps = F.map(ckPass), same = ps.every(function(v){ return v === ps[0]; });
+    return same ? '・直線＝及格線（20 號 ' + ps[0] + ' 位，到今天 ' + ckNeed(F[0], day) + ' 位）' : '・直線＝各院及格線換算到今天'; }
   function leadListHtml(){
     var L = leadRank(), many = !ST.org && ORGS.length > 1;
     var top = (D.ck ? '<button type="button" class="ckall" data-ckorg="1"><b>報到的學生</b><span>' + ckOrgRows().filter(function(r){ return !fut(r[3]); }).length + ' 位・誰、哪天、哪個通路、後來有沒有註冊</span><i>›</i></button>' : '<p class="z">' + CK_WAIT + '</p>') + (window.__pgMvCount ? window.__pgMvCount(FOCUS()) : '');
     if (!L || !L.length) return top + '<p class="z">這一院沒有業務資料。</p>';
     return top + '<h5>每位業務<small>照報到數排・橘色＝3 天以上沒有新增</small></h5><div class="nl">' + L.map(function(p){ var hot = p.none || (p.d != null && p.d >= 3), dt = dayTxt(p);
-      return '<button type="button" class="nl-r' + (hot ? ' hot' : '') + '" data-np="' + esc(p.k) + '"><span class="nl-a"><b>' + esc(p.名) + '</b>' + (many ? '<i>' + esc(p.院) + '</i>' : '') + (p.td ? '<em class="rtag">今天休</em>' : '') + '<small>' + (p.last ? '最後一次 ' + md(p.last) + '・' : '') + esc(dt) + (/ 天$/.test(dt) ? '沒新增' : '') + (p.off ? '・休 ' + p.off + ' 天不算' : '') + '</small></span>'
+      return '<button type="button" class="nl-r' + (hot ? ' hot' : '') + '" data-np="' + esc(p.k) + '"><span class="nl-a"><b>' + esc(p.名) + '</b>' + (many ? '<i>' + esc(p.院) + '</i>' : '') + (p.td ? '<em class="rtag">今天休</em>' : '') + '<small>' + (p.last ? '最後一次 ' + md(p.last) + '・' : '') + esc(dt) + (/ 天$/.test(dt) ? '沒新增' : '') + (p.off ? '・休 ' + p.off + ' 天不算' : '') + '</small>' + (p.gap ? '<small class="gp">及格線到今天 ' + p.need + ' 位，還差 ' + p.gap + ' 位</small>' : '') + '</span>'
         + '<span class="nl-b"><b>' + p.v + '</b><small>報到</small></span><span class="nl-c">面談 ' + p.面談 + '<br>註冊 ' + p.註冊 + '</span></button>'; }).join('') + '</div>'; }
   function navPage(pg){ var o0 = ST.org, out = null; ST.org = pg.org || '';
     try {
@@ -3256,18 +3297,20 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
       else if (pg.k === 'person') out = { t: '報到明細', s: String(pg.a).split('|')[0], h: personHtml(pg.a) };
       else if (pg.k === 'mv') out = { t: '報到異動', s: [].concat(pg.a).join('、'), h: window.__pgMvHtml ? window.__pgMvHtml(pg.a) : '' };
       else if (pg.k === 'pili') out = { t: '霹靂無敵表單需補件', s: (pg.org || REGION) + '・點名字看學生、要補什麼', h: piliHtml(true) };
-      else if (pg.k === 'trial') out = { t: '排了試聽、沒收報名費', s: (pg.org || REGION), h: trialHtml() };
+      else if (pg.k === 'trial') out = { t: '試聽追蹤', s: (pg.org || REGION), h: trialHtml() };
+      else if (pg.k === 'ref') out = { t: '學員介紹來的報到', s: [].concat(pg.a || FOCUS()).join('、'), h: refHtml([].concat(pg.a || FOCUS())) };
     } finally { ST.org = o0; }
     return out; }
   /* p5.3 排了試聽、沒收報名費：照院、照業務列 */
-  function trialHtml(){ var orgs = FOCUS(), L = trialRows(orgs);
-    if (!L.length) return '<p class="psub">面談紀錄是「談過沒報名」、備註寫了試聽、單元課、體驗的學生</p><p class="z">沒有。排了試聽的學生都收了報名費。</p>';
-    var h = '<p class="psub">面談紀錄是「談過沒報名」、備註又寫了試聽、單元課、體驗 → 學生要來了，100 元報名費還沒收。<b class="og">承辦今天先收報名費，再讓學生來。</b></p>';
-    orgs.forEach(function(o){ var M = L.filter(function(x){ return x.院 === o; }); if (!M.length) return; var by = {}, ks = []; M.forEach(function(x){ if (!by[x.業務]) { by[x.業務] = []; ks.push(x.業務); } by[x.業務].push(x); });
+  function trialGroups(L, orgs){ var h = ''; orgs.forEach(function(o){ var M = L.filter(function(x){ return x.院 === o; }); if (!M.length) return; var by = {}, ks = []; M.forEach(function(x){ if (!by[x.業務]) { by[x.業務] = []; ks.push(x.業務); } by[x.業務].push(x); });
       ks.sort(function(a, b){ return by[b].length - by[a].length; });
-      h += '<h5>' + esc(o) + '・' + M.length + ' 位</h5><div class="trl">'
-        + ks.map(function(k){ return '<div class="tr-g"><b class="tr-w">' + esc(short(k)) + '<small>' + by[k].length + ' 位</small></b>' + by[k].map(function(x){ return '<div class="tr-r"><span class="tr-n">' + esc(x.生) + '<small>面談 ' + esc(md(x.d)) + '</small></span><span class="tr-m">' + esc(clip(x.m, 80)) + '</span></div>'; }).join('') + '</div>'; }).join('') + '</div>'; });
-    return h + '<p class="z" style="margin-top:1em">資料是 EIP 面談紀錄（走到哪一關）。收了報名費、EIP 改成已報名，下一次按 🏫 班況就會從這裡拿掉。</p>'; }
+      h += '<h5>' + esc(o) + '・' + M.length + ' 位</h5><div class="trl">' + ks.map(function(k){ return '<div class="tr-g"><b class="tr-w">' + esc(short(k)) + '<small>' + by[k].length + ' 位</small></b>' + by[k].map(function(x){ return '<div class="tr-r"><span class="tr-n">' + esc(x.生) + '<small>面談 ' + esc(md(x.d)) + '</small></span><span class="tr-m">' + esc(clip(x.m, 80)) + '</span></div>'; }).join('') + '</div>'; }).join('') + '</div>'; }); return h; }
+  function trialHtml(){ var orgs = FOCUS(), L = trialRows(orgs), P2 = trialPastRows(orgs);
+    var sec2 = P2.length ? '<h4 class="tr-h2">來過試聽、還沒註冊 ' + P2.length + ' 位</h4><p class="psub">報名了（收了 100 元）、還沒註冊，備註裡的試聽／單元課日期已經過了 → <b class="og">再約第二次體驗，也可以換人處理。</b></p>' + trialGroups(P2, orgs) : '';
+    if (!L.length) return '<p class="psub">面談紀錄是「談過沒報名」、備註寫了試聽、單元課、體驗的學生</p><p class="z">沒有。排了試聽的學生都收了報名費。</p>' + sec2;
+    var h = (P2.length ? '<h4 class="tr-h2">排了試聽、沒收報名費 ' + L.length + ' 位</h4>' : '') + '<p class="psub">面談紀錄是「談過沒報名」、備註又寫了試聽、單元課、體驗 → 學生要來了，100 元報名費還沒收。<b class="og">承辦今天先收報名費，再讓學生來。</b></p>';
+    h += trialGroups(L, orgs);
+    return h + sec2 + '<p class="z" style="margin-top:1em">資料是 EIP 面談紀錄（走到哪一關）。收了報名費、註冊了，下一次按 🏫 班況就會從這裡拿掉。</p>'; }
   function navShow(dir){
     var pg = NAV[NAV.length - 1]; if (!pg) return; var v = navPage(pg); if (!v || !v.h) return;
     var fresh = !(ST.zoom === 'nav' && Z.classList.contains('nav'));
@@ -3377,33 +3420,39 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
     if (b) incCols(b, { mine: [], ink: 1 });
     drawRegionBullets(); }
 
+  /* p5.4（11/20 雅晴：介紹是大家忽略的地方）學員介紹點進去：照院、照業務列出是哪些學生 */
+  function refHtml(orgs){ var C = (D.ck && D.ck.列) || [], n = new Date(), ym = (A && A.月) ? String(A.月).slice(0, 7) : ymd(n).slice(0, 7), h = '<p class="psub">報到明細裡通路是「學員介紹」的學生（這個月、預約日期已經到的）。看誰最會拿介紹，直接去問他怎麼開口。</p>';
+    var any = false; orgs.forEach(function(o){ var M = C.filter(function(r){ return r[0] === o && String(r[3]).slice(0, 7) === ym && !fut(r[3]) && r[5] === '學員介紹'; }); if (!M.length) return; any = true;
+      var by = {}, ks = []; M.forEach(function(r){ if (!by[r[1]]) { by[r[1]] = []; ks.push(r[1]); } by[r[1]].push(r); }); ks.sort(function(a, b){ return by[b].length - by[a].length; });
+      h += '<h5>' + esc(o) + '・' + M.length + ' 位<small>' + ks.map(function(k){ return esc(short(k)) + ' ' + by[k].length; }).join('・') + '</small></h5><div class="trl">' + ks.map(function(k){ return '<div class="tr-g"><b class="tr-w">' + esc(short(k)) + '<small>' + by[k].length + ' 位</small></b>' + by[k].sort(function(a, b){ return a[3] < b[3] ? 1 : -1; }).map(function(r){ return '<div class="tr-r"><span class="tr-n">' + esc(r[2]) + '<small>報到 ' + esc(md(r[3])) + '</small></span><span class="tr-m">' + esc(r[6] || '') + '</span></div>'; }).join('') + '</div>'; }).join('') + '</div>'; });
+    return any ? h : h + '<p class="z">這個月還沒有學員介紹來的報到。</p>'; }
   /* p5.3 三區比學員介紹（區內加總）：中區＝台一二三、桃區＝壢一二三、高雄建國 */
   function refRegHtml(){ if (!D.ck) return ''; var all = (RANK && RANK.all) || [], G = [['中區', ['台一', '台二', '台三']], ['桃區', ['壢一', '壢二', '壢三']], ['高雄建國', ['建國']]];
-    var rows = G.map(function(g){ var n = all.filter(function(x){ return g[1].indexOf(x.院) >= 0; }).reduce(function(a, x){ return a + (+x.n || 0); }, 0), r = refN(g[1]) || 0; return { l: g[0], n: n, r: r, p: n ? r / n : 0, me: g[1].some(function(o){ return ORGS.indexOf(o) >= 0; }) }; }).sort(function(a, b){ return b.r - a.r; });
-    return '<h5 style="margin-top:1.2em">三區比學員介紹<small>報到裡有幾位是學員介紹來的</small></h5><table><tr><th class="l">區</th><th>報到</th><th>學員介紹</th><th>佔報到</th></tr>' + rows.map(function(x){ return '<tr class="' + (x.me ? 'me' : '') + '"><td class="l">' + x.l + '</td><td>' + x.n + '</td><td>' + x.r + '</td><td>' + Math.round(x.p * 100) + '%</td></tr>'; }).join('') + '</table>'; }
+    var rows = G.map(function(g){ var n = all.filter(function(x){ return g[1].indexOf(x.院) >= 0; }).reduce(function(a, x){ return a + (+x.n || 0); }, 0), r = refN(g[1]) || 0; return { l: g[0], o: g[1], n: n, r: r, p: n ? r / n : 0, me: g[1].some(function(o){ return ORGS.indexOf(o) >= 0; }) }; }).sort(function(a, b){ return b.r - a.r; });
+    return '<h5 style="margin-top:1.2em">三區比學員介紹<small>報到裡有幾位是學員介紹來的</small></h5><table><tr><th class="l">區</th><th>報到</th><th>學員介紹</th><th>佔報到</th></tr>' + rows.map(function(x){ return '<tr class="' + (x.me ? 'me' : '') + '"><td class="l">' + x.l + '</td><td>' + x.n + '</td><td>' + (x.r ? '<button type="button" class="refb" data-refz="' + x.o.join(',') + '">' + x.r + ' 位 ›</button>' : '0') + '</td><td>' + Math.round(x.p * 100) + '%</td></tr>'; }).join('') + '</table>'; }
   /* ── ⤢ 放大：從那一格長出來 ── */
   var Z = document.getElementById('bzoom');
   function zoomHtml(id){
     var t = '';
     if (id === 'rank'){ var all = (RANK && RANK.all) || [];
       t = '<div class="zg"><div class="zc"><h5>七家報到</h5><svg class="ch" data-z="rank"></svg></div><div class="zc"><h5>名次</h5><table><tr><th>學院</th><th>報到</th><th>' + (RANK && RANK.w3 ? '近 3 天' : '比前一天') + '</th><th>全省名次</th>' + (D.ck ? '<th>學員介紹</th>' : '') + '</tr>'
-        + all.map(function(x){ var rf = refN(x.院); return '<tr class="' + (ORGS.indexOf(x.院) >= 0 ? 'me' : '') + '"><td>' + x.院 + '</td><td>' + x.n + '</td><td class="' + (x.diff > 0 ? 'rd' : 'z') + '">' + (x.diff == null ? '—' : (x.diff > 0 ? '+' : '') + x.diff) + '</td><td>第 ' + x.rank + '</td>' + (D.ck ? '<td>' + (rf == null ? '—' : rf + ' 位' + (x.n ? '（' + Math.round(rf / x.n * 100) + '%）' : '')) + '</td>' : '') + '</tr>'; }).join('') + '</table>' + refRegHtml() + '</div>'
+        + all.map(function(x){ var rf = refN(x.院); return '<tr class="' + (ORGS.indexOf(x.院) >= 0 ? 'me' : '') + '"><td>' + x.院 + '</td><td>' + x.n + '</td><td class="' + (x.diff > 0 ? 'rd' : 'z') + '">' + (x.diff == null ? '—' : (x.diff > 0 ? '+' : '') + x.diff) + '</td><td>第 ' + x.rank + '</td>' + (D.ck ? '<td>' + (rf == null ? '—' : (rf ? '<button type="button" class="refb" data-refz="' + esc(x.院) + '">' : '') + rf + ' 位' + (x.n ? '（' + Math.round(rf / x.n * 100) + '%）' : '') + (rf ? ' ›</button>' : '')) + '</td>' : '') + '</tr>'; }).join('') + '</table>' + refRegHtml() + '</div>'
         + personTable('業務報到', function(s){ return s.報到; }, '報到') + '</div>'; }
     else if (id === 'open'){ var L = (typeof OPEN !== 'undefined' ? OPEN : []);
       t = '<table><tr><th class="l">班</th><th>開班日</th><th>剩幾天</th><th>登記</th><th>門檻</th><th>滿班</th><th>狀態</th><th class="l">還沒登記的業務</th></tr>' + L.map(function(c){ var NR = noRegOf(c); return '<tr class="clk" data-id="' + c.cid + '"><td class="l">' + unitTag(c) + '<span class="nm' + (c.type === '單元' ? ' u' : '') + '">' + esc(c.code) + '</span> ' + esc(shortNm(c.name)) + '</td><td>' + esc(c.openMD) + '</td><td>' + (c.toOpen ? c.toOpen + ' 天' : '今天') + '</td><td>' + c.reg + '</td><td>' + (c.th || '—') + '</td><td>' + (c.seat || '—') + '</td><td class="' + (c.ok ? 'rd' : 'og') + '">' + esc(c.ok ? c.stTxt : '差 ' + needN(c) + ' 位') + '</td><td class="l nrc">' + (NR == null ? '<span class="z">名單還沒讀</span>' : (NR.length ? '<b class="og">' + NR.length + ' 位</b> ' + nrNames(NR) : '<span class="z">都登了</span>')) + '</td></tr>'; }).join('') + '</table>'
         + (L.length ? '' : '<p class="z">30 天內沒有要開的班。</p>') + '<p class="z" style="margin-top:1em">點一班看學生名單。還沒登記的業務照視角算（' + esc(ST.org || REGION + '整區') + '），主管、離職不算。</p>'; }
     else if (id === 'lead' || id === 'focus'){ var k = id === 'lead' ? ['🧑', '⚔️'] : ['🎤'];
       var LR = id === 'lead' ? leadRank() : null;
-      if (LR && LR.length) t = (D.ck ? '<button type="button" class="ckall" data-ckorg="1"><b>' + esc(ST.org || REGION) + ' 報到的學生</b><span>' + ckOrgRows().filter(function(r){ return !fut(r[3]); }).length + ' 位・誰、哪天、哪個通路、後來有沒有註冊</span><i>›</i></button>' + (window.__pgMvCount ? window.__pgMvCount(FOCUS()) : '') : '<p class="z" style="margin:0 0 1em">' + CK_WAIT + '</p>') + '<h5 style="margin:0 0 .5em;font-size:1.1em">' + esc(ST.org || REGION) + '・' + (ST.lsort === 'd' ? '幾天沒有新增報到' : '報到排名') + '<small style="color:var(--label2);font-weight:500;margin-left:.6em">點名字看明細</small></h5><table><tr><th>名次</th><th class="l">業務</th>' + (ST.org || ORGS.length < 2 ? '' : '<th>學院</th>') + '<th>報到</th><th>面談</th><th>註冊</th><th>最後一次報到</th><th>幾天沒有新增</th></tr>'
-        + LR.map(function(p, i){ return '<tr class="clk" data-p="' + esc(p.k) + '"><td>' + (i + 1) + '</td><td class="l nm">' + esc(p.名) + (p.td ? '<em class="rtag">今天休</em>' : '') + '</td>' + (ST.org || ORGS.length < 2 ? '' : '<td>' + esc(p.院) + '</td>') + '<td>' + p.v + '</td><td>' + p.面談 + '</td><td>' + p.註冊 + '</td><td>' + (p.last ? mdk(p.last) : '—') + '</td><td class="' + ((p.none || p.d >= 3) ? 'og' : '') + '">' + esc(dayTxt(p)) + (p.off ? '<small class="offn">休 ' + p.off + ' 天不算</small>' : '') + '</td></tr>'; }).join('') + '</table><hr style="border:0;border-top:.5px solid var(--sep);margin:1.2em 0">';
+      if (LR && LR.length) t = (D.ck ? '<button type="button" class="ckall" data-ckorg="1"><b>' + esc(ST.org || REGION) + ' 報到的學生</b><span>' + ckOrgRows().filter(function(r){ return !fut(r[3]); }).length + ' 位・誰、哪天、哪個通路、後來有沒有註冊</span><i>›</i></button>' + (window.__pgMvCount ? window.__pgMvCount(FOCUS()) : '') : '<p class="z" style="margin:0 0 1em">' + CK_WAIT + '</p>') + '<h5 style="margin:0 0 .5em;font-size:1.1em">' + esc(ST.org || REGION) + '・' + (ST.lsort === 'd' ? '幾天沒有新增報到' : '報到排名') + '<small style="color:var(--label2);font-weight:500;margin-left:.6em">點名字看明細</small></h5><table><tr><th>名次</th><th class="l">業務</th>' + (ST.org || ORGS.length < 2 ? '' : '<th>學院</th>') + '<th>報到</th><th>面談</th><th>註冊</th><th>最後一次報到</th><th>幾天沒有新增</th>' + (TODAY.getDate() >= 6 ? '<th>及格線（到今天）</th>' : '') + '</tr>'
+        + LR.map(function(p, i){ return '<tr class="clk" data-p="' + esc(p.k) + '"><td>' + (i + 1) + '</td><td class="l nm">' + esc(p.名) + (p.td ? '<em class="rtag">今天休</em>' : '') + '</td>' + (ST.org || ORGS.length < 2 ? '' : '<td>' + esc(p.院) + '</td>') + '<td>' + p.v + '</td><td>' + p.面談 + '</td><td>' + p.註冊 + '</td><td>' + (p.last ? mdk(p.last) : '—') + '</td><td class="' + ((p.none || p.d >= 3) ? 'og' : '') + '">' + esc(dayTxt(p)) + (p.off ? '<small class="offn">休 ' + p.off + ' 天不算</small>' : '') + '</td>' + (p.need != null ? '<td class="' + (p.gap ? 'og' : '') + '">' + p.need + (p.gap ? '・差 ' + p.gap : '・及格') + '</td>' : '') + '</tr>'; }).join('') + '</table><hr style="border:0;border-top:.5px solid var(--sep);margin:1.2em 0">';
       t += k.map(function(x){ var s = (typeof secText === 'function' ? secText(x) : ''); if (!s) return ''; var L2 = s.split('\n'); return '<div class="agz"><h5 style="margin:.2em 0 .6em;font-size:1.1em">' + esc(L2[0].replace(/^\S+\s*/, '')) + '</h5>' + L2.slice(1).filter(function(l){ return l.trim(); }).map(function(l){ return '<p>' + fmtLine(l) + '</p>'; }).join('') + '</div>'; }).join('<hr style="border:0;border-top:.5px solid var(--sep);margin:1.2em 0">') || '<p class="z">' + esc(D.agNone || '今天議程沒有這一段') + '</p>'; }
-    else if (id === 'fun'){ var F = (A && A.fun) || [], one = FOCUS().length === 1, TRn = trialRows(FOCUS()).length;
-      t = (TRn ? '<button type="button" class="ckall trz" data-trial="1"><b>排了試聽、沒收報名費 ' + TRn + ' 位</b><span>談過沒報名、備註寫了試聽・單元課・體驗</span><i>›</i></button>' : '') + '<div class="zg' + (one ? ' one' : '') + '">' + FOCUS().map(function(o){ var f = F.filter(function(x){ return x.院 === o && !x.主管; }).sort(function(a, b){ return b.談過 - a.談過; });
+    else if (id === 'fun'){ var F = (A && A.fun) || [], one = FOCUS().length === 1, TRn = trialRows(FOCUS()).length, TRp = trialPastRows(FOCUS()).length;
+      t = (TRn || TRp ? '<button type="button" class="ckall trz" data-trial="1"><b>' + [TRn ? '排了試聽、沒收報名費 ' + TRn + ' 位' : '', TRp ? '來過試聽、還沒註冊 ' + TRp + ' 位' : ''].filter(Boolean).join('・') + '</b><span>' + (TRn ? '談過沒報名、備註寫了試聽・單元課・體驗' : '') + (TRn && TRp ? '；' : '') + (TRp ? '試聽日期過了 → 再約第二次' : '') + '</span><i>›</i></button>' : '') + '<div class="zg' + (one ? ' one' : '') + '">' + FOCUS().map(function(o){ var f = F.filter(function(x){ return x.院 === o && !x.主管; }).sort(function(a, b){ return b.談過 - a.談過; });
         return '<div class="zc"><h5>' + o + '</h5><table class="ftab"><tr><th>業務</th><th>談過</th><th>報名</th><th>註冊</th><th>排進班</th><th>上過課</th></tr>' + f.map(function(x){ return '<tr class="clk fk" data-fk="1"><td class="nm"><span class="tri">▸</span>' + esc(short(x.業務)) + '</td><td>' + x.談過 + '</td><td>' + x.報名 + '</td><td>' + x.註冊 + '</td><td class="' + (pjx(x) < x.註冊 ? 'og' : '') + '">' + pjx(x) + '</td><td>' + (x.上過課 == null ? '—' : x.上過課) + '</td></tr><tr class="fl" hidden><td colspan="6">' + funStu(x) + '</td></tr>'; }).join('') + '</table></div>'; }).join('') + '</div>'
         + '<p class="z" style="margin-top:1em">點一位業務，看他這個月談過的每一位學生走到哪一關、EIP 面談紀錄的備註。' + (F.some(function(x){ return x.名單; }) ? '' : '學生名單要等擴充 5.75 同步一次（⚡ 全部同步 → 🏫 班況）才會出現。') + '</p>'; }
     else if (id === 'unc'){ var R = uncRows(), UX = (A && A.uncX) || [], ux = function(o){ var X = UX.filter(function(x){ return ST.org ? x.院 === ST.org : x.院 === o; }); if (!X.length) return '';
         return '<h5 class="unxh">別的部門加購 ' + X.length + ' 筆<small>承辦不是本院業務，不算進上面</small></h5><table class="unxt"><tr><th>承辦</th><th class="l">學生</th><th class="l">課程</th><th>幾天</th></tr>' + X.map(function(x){ return '<tr><td>' + esc(short(x.承辦)) + '</td><td class="l">' + esc(x.學生) + '</td><td class="l">' + esc(x.課程) + '</td><td>' + x.天 + ' 天</td></tr>'; }).join('') + '</table>'; };
-      t = '<div class="zg">' + R.map(function(r){ return '<div class="zc"><h5>' + r.o + '・' + r.u.length + ' 筆</h5><table><tr><th>承辦</th><th class="l">學生</th><th class="l">課程</th><th>幾天</th></tr>' + r.u.slice().sort(function(a, b){ return (+b.天 || 0) - (+a.天 || 0); }).map(function(x){ return '<tr><td class="nm">' + esc(short(x.承辦)) + '</td><td class="l">' + esc(x.學生) + '</td><td class="l">' + esc(x.課程) + '</td><td class="' + ((+x.天 || 0) > 14 ? 'og' : '') + '">' + x.天 + ' 天</td></tr>'; }).join('') + '</table>' + (ST.org ? '' : ux(r.o)) + '</div>'; }).join('') + '</div>' + (ST.org ? ux(ST.org) : ''); }
+      t = '<div class="zg">' + R.map(function(r){ return '<div class="zc"><h5>' + r.o + '・' + r.u.length + ' 筆</h5><table><tr><th>承辦</th><th class="l">學生</th><th class="l">課程</th><th>幾天</th></tr>' + r.u.slice().sort(function(a, b){ return (+b.天 || 0) - (+a.天 || 0); }).map(function(x){ return '<tr><td class="nm">' + esc(short(x.承辦)) + '</td><td class="l">' + esc(x.學生) + '</td><td class="l">' + esc(x.課程) + heTag(x) + '</td><td class="' + ((+x.天 || 0) > 14 ? 'og' : '') + '">' + x.天 + ' 天</td></tr>'; }).join('') + '</table>' + (ST.org ? '' : ux(r.o)) + '</div>'; }).join('') + '</div>' + (ST.org ? ux(ST.org) : ''); }
     else if (id === 'att'){
       var row = function(x, lab){ var f = x.f;
         return '<tr class="clk" data-id="' + x.cid + '"><td class="l"><span class="nm">' + esc(x.code) + '</span> ' + esc(shortNm(x.name)) + (x.nr ? ' <small class="og">可能還沒點名</small>' : '') + '</td><td>' + esc(lab(x.c)) + '</td><td>' + (x.c.done || '—') + '/' + (x.c.total || '—') + '</td><td>' + (f && f.應到 ? f.實到 : '—') + '</td><td>' + (f && f.應到 || '—') + '</td><td>' + (f && f.請假 != null ? f.請假 : '—') + '</td><td>' + (f && f.曠課 != null ? f.曠課 : '—') + '</td><td class="' + (!x.nr && x.miss != null && x.miss > 30 ? 'og' : '') + '">' + (x.nr || x.miss == null ? '—' : x.miss + '%') + '</td></tr>'; };
@@ -3650,6 +3699,7 @@ if (!window.__pgThemeBound) { window.__pgThemeBound = 1;
     var pn0 = e.target.closest('[data-pn]'); if (pn0 && window.__pgPiliOpen){ window.__pgPiliOpen(pn0.dataset.pn); return; }
     var mm = e.target.closest('[data-mm]'); if (mm){ mm.classList.toggle('open'); return; }
     var fk = e.target.closest('[data-fk]'); if (fk){ var nx = fk.nextElementSibling; if (nx){ nx.hidden = !nx.hidden; fk.classList.toggle('open', !nx.hidden); } return; }
+    var rfz = e.target.closest('[data-refz]'); if (rfz){ navOpen('ref', rfz.dataset.refz.split(','), ST.org, null); return; }   // p5.4 學員介紹點進去
     var trb = e.target.closest('[data-trial]'); if (trb){ navOpen('trial', null, ST.org, null); return; }   // p5.3 走到哪一關放大 → 排了試聽、沒收報名費
     var ck = e.target.closest('[data-ckorg]'); if (ck){ if (ST.zoom === 'nav') navPush('org'); else navOpen('org', null, ST.org, ST.zoom === 'lead' ? 'lead' : null); return; }
     var mz = e.target.closest('[data-mvz]'); if (mz){ var oz = mz.dataset.mvz.split(','); if (ST.zoom === 'nav') navPush('mv', oz); else navOpen('mv', oz, ST.org, ST.zoom === 'lead' ? 'lead' : null); return; }
